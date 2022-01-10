@@ -1,0 +1,44 @@
+FROM golang:1.17-alpine
+
+ENV mecab_url https://drive.google.com/uc?export=download&id=0B4y35FiV1wh7cENtOXlicTFaRUE
+ENV ipadic_url https://drive.google.com/uc?export=download&id=0B4y35FiV1wh7MWVlSDBCSXZMTXM
+ENV neologd_rev 6e90aadbe26c3f7a8f829d422465a7cbad603258
+ENV build_deps "curl git bash file sudo openssh gcc g++ make patch"
+ENV runtime_deps "openssl musl-dev libstdc++"
+
+RUN apk add --no-cache -t .build_deps ${build_deps} \
+  && apk add --no-cache ${runtime_deps}
+
+# Install MeCab
+RUN curl -LSfs -o mecab.tar.gz ${mecab_url} \
+  && tar zxf mecab.tar.gz \
+  && cd mecab-* \
+  # mac(m1) option for "--build=arm-unknown-linux-gnu --host=arm-unknown-linux-gnu --target=arm-unknown-linux-gnu"
+  && ./configure --enable-utf8-only --with-charset=utf8 --build=arm-unknown-linux-gnu --host=arm-unknown-linux-gnu --target=arm-unknown-linux-gnu \
+  && make \
+  && make install
+
+# Install IPADic
+RUN curl -LSfs -o mecab-ipadic.tar.gz ${ipadic_url} \
+  && tar zxf mecab-ipadic.tar.gz \
+  && cd mecab-ipadic-* \
+  # mac(m1) option for "--build=arm-unknown-linux-gnu --host=arm-unknown-linux-gnu --target=arm-unknown-linux-gnu"
+  && ./configure --with-charset=utf8 --build=arm-unknown-linux-gnu --host=arm-unknown-linux-gnu --target=arm-unknown-linux-gnu \
+  && make \
+  && make install \
+  && cd ../ \
+# Install NEologd ※ https://github.com/bushiyama/mecab-ipadic-neologd/blob/master/libexec/make-mecab-ipadic-neologd.sh#L110
+  && git clone --depth 1 https://github.com/bushiyama/mecab-ipadic-neologd.git \
+  && mkdir mecab-ipadic-neologd/build/ \
+  && mv mecab-ipadic.tar.gz mecab-ipadic-neologd/build/mecab-ipadic-2.7.0-20070801.tar.gz \
+  && echo `openssl sha1 mecab-ipadic-neologd/build/mecab-ipadic-2.7.0-20070801.tar.gz | cut -d $' ' -f 2,2` \
+  && cd mecab-ipadic-neologd \
+  && ./bin/install-mecab-ipadic-neologd -n -y -u -p "$(mecab-config --dicdir)/mecab-ipadic-neologd/"
+
+ENV CGO_LDFLAGS "-L/usr/local/lib -lmecab -lstdc++"
+ENV CGO_CFLAGS "-I/usr/local/include"
+
+RUN go get github.com/bluele/mecab-golang \
+  && go install github.com/cosmtrek/air@v1.27.8
+
+CMD ["air"]
