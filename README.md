@@ -1,2 +1,6 @@
 # shuzo-go
-motto atsuku nare yp!
+
+```bash
+$ docker-compose up -d
+$ curl --GET -d hoge=fuga localhost:8080
+```
