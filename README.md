@@ -1,4 +1,4 @@
-# shuzo-go
+# wordcloud
 
 ```bash
 $ docker-compose up -d

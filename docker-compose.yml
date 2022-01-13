@@ -4,11 +4,11 @@ services:
     build:
       context: .
       dockerfile: ./docker/app/dockerfile
-    hostname: shuzo-go
-    container_name: shuzo-go
+    hostname: wordcloud
+    container_name: wordcloud
     volumes:
-      - ./:/go/src/github.com/bushiyama/shuzo-go
-    working_dir: /go/src/github.com/bushiyama/shuzo-go
+      - ./:/go/src/github.com/bushiyama/wordcloud
+    working_dir: /go/src/github.com/bushiyama/wordcloud
     environment:
       - GOPATH=/go
     ports:
