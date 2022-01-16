@@ -7,37 +7,8 @@ import (
 	"strings"
 
 	"github.com/bluele/mecab-golang"
+	"github.com/bushiyama/wordcloud/internal/mecaber"
 )
-
-const BOSEOS = "BOS/EOS"
-
-func parseToNode(m *mecab.MeCab, text string) ([]string, error) {
-	ret := []string{}
-	tg, err := m.NewTagger()
-	if err != nil {
-		return ret, err
-	}
-	defer tg.Destroy()
-
-	lt, err := m.NewLattice(text)
-	if err != nil {
-		return ret, err
-	}
-	defer lt.Destroy()
-
-	node := tg.ParseToNode(lt)
-	for {
-		features := strings.Split(node.Feature(), ",")
-		if features[0] != BOSEOS {
-			fmt.Printf("%s %s\n", node.Surface(), node.Feature())
-			ret = append(ret, fmt.Sprintf("%s %s\n", node.Surface(), node.Feature()))
-		}
-		if node.Next() != nil {
-			break
-		}
-	}
-	return ret, nil
-}
 
 func main() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -57,7 +28,7 @@ func main() {
 		}
 		defer m.Destroy()
 
-		ret, err := parseToNode(m, p)
+		ret, err := mecaber.ParseToNode(m, p)
 		if err != nil {
 			panic(err)
 		}
