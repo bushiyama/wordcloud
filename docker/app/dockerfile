@@ -41,4 +41,4 @@ ENV CGO_CFLAGS "-I/usr/local/include"
 RUN go get github.com/bluele/mecab-golang \
   && go install github.com/cosmtrek/air@v1.27.8
 
-CMD ["air"]
+ENTRYPOINT [ "/usr/bin/tail" ,"-f", "/dev/null" ]

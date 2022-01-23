@@ -1,4 +1,4 @@
-package image
+package cloudimg
 
 import (
 	"flag"
@@ -7,6 +7,10 @@ import (
 	"os"
 
 	"github.com/psykhi/wordclouds"
+)
+
+const (
+	defaultFontPath = "./fonts/marumonica/x12y16pxMaruMonica.ttf"
 )
 
 type MaskConf struct {
@@ -32,17 +36,15 @@ var DefaultColors = []color.RGBA{
 	{0x70, 0xD6, 0xBF, 0xff},
 }
 
-func GenCloud() {
-	wordCounts := map[string]int{"meet": 42, "fish": 30, "kinoko": 3}
-
+func GenCloud(wordCounts map[string]int) {
 	conf := Conf{
-		FontMaxSize:     700,
-		FontMinSize:     10,
+		FontMaxSize:     64 * 10,
+		FontMinSize:     64,
 		RandomPlacement: false,
-		FontFile:        "./fonts/roboto/Roboto-Regular.ttf",
+		FontFile:        defaultFontPath,
 		Colors:          DefaultColors,
-		Width:           4096,
-		Height:          4096,
+		Width:           1024 * 3,
+		Height:          1024 * 3,
 		Mask: MaskConf{"", color.RGBA{
 			R: 0,
 			G: 0,
@@ -57,7 +59,7 @@ func GenCloud() {
 	}
 
 	w := wordclouds.NewWordcloud(wordCounts,
-		wordclouds.FontFile("./fonts/roboto/Roboto-Regular.ttf"),
+		wordclouds.FontFile(defaultFontPath),
 		wordclouds.FontMaxSize(conf.FontMaxSize),
 		wordclouds.FontMinSize(conf.FontMinSize),
 		wordclouds.Colors(colors),
