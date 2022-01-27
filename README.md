@@ -14,3 +14,6 @@ $ docker-compose exec app go run cmd/main.go -w メロスは激怒した。必�
 ```
 
 ![sample](./sample_output.png)
+
+## Credits
+- x0y0pxFreeFont: http://www17.plala.or.jp/xxxxxxx/00ff/
