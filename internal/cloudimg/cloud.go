@@ -1,7 +1,7 @@
 package cloudimg
 
 import (
-	"flag"
+	"fmt"
 	"image/color"
 	"image/png"
 	"os"
@@ -37,6 +37,11 @@ var DefaultColors = []color.RGBA{
 }
 
 func GenCloud(wordCounts map[string]int) {
+	if len(wordCounts) == 0 {
+		fmt.Println("ERROR: wordCounts is empty!")
+		return
+	}
+
 	conf := Conf{
 		FontMaxSize:     64 * 10,
 		FontMinSize:     64,
@@ -69,9 +74,18 @@ func GenCloud(wordCounts map[string]int) {
 		wordclouds.RandomPlacement(conf.RandomPlacement),
 	)
 
+	fmt.Println("Drawing wordcloud...")
 	img := w.Draw()
-	var output = flag.String("output", "output.png", "path to output image")
-	outputFile, _ := os.Create(*output)
-	png.Encode(outputFile, img)
-	outputFile.Close()
+	fmt.Printf("Image bounds: %v\n", img.Bounds())
+	outputFile, err := os.Create("output.png")
+	if err != nil {
+		panic(err)
+	}
+	defer outputFile.Close()
+
+	fmt.Println("Encoding image to output.png...")
+	if err := png.Encode(outputFile, img); err != nil {
+		panic(err)
+	}
+	fmt.Println("✓ Successfully created output.png")
 }
