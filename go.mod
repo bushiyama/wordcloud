@@ -7,6 +7,7 @@ require (
 	github.com/ikawaha/kagome/v2 v2.10.2
 	github.com/psykhi/wordclouds v0.0.0-20220103101922-7e3171a66cbc
 	github.com/urfave/cli/v2 v2.3.0
+	golang.org/x/text v0.30.0
 )
 
 require (

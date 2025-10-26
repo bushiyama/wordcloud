@@ -1,19 +1,24 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strings"
 
 	cli "github.com/urfave/cli/v2"
+	"golang.org/x/text/encoding/japanese"
+	"golang.org/x/text/transform"
 
 	"github.com/bushiyama/wordcloud/internal/cloudimg"
 	"github.com/bushiyama/wordcloud/internal/kagomer"
 )
 
 var (
-	word string
+	word     string
+	filePath string
 )
 
 func main() {
@@ -22,14 +27,43 @@ func main() {
 	app.Flags = []cli.Flag{
 		&cli.StringFlag{
 			Name:        "w",
-			Usage:       "required word",
+			Usage:       "input text directly",
 			Destination: &word,
-			Required:    true,
+		},
+		&cli.StringFlag{
+			Name:        "f",
+			Aliases:     []string{"file"},
+			Usage:       "input text file path",
+			Destination: &filePath,
 		},
 	}
 
 	app.Action = func(c *cli.Context) error {
-		words, err := kagomer.ParseToNode(word)
+		// どちらか一方だけが指定されているかをチェック
+		if word == "" && filePath == "" {
+			return fmt.Errorf("either -w or -f option is required")
+		}
+		if word != "" && filePath != "" {
+			return fmt.Errorf("cannot use both -w and -f options at the same time")
+		}
+
+		var text string
+		if filePath != "" {
+			// ファイルから読み込み
+			data, err := os.ReadFile(filePath)
+			if err != nil {
+				return fmt.Errorf("failed to read file: %w", err)
+			}
+			// エンコーディング変換
+			text, err = convertToUTF8(data)
+			if err != nil {
+				return fmt.Errorf("failed to convert encoding: %w", err)
+			}
+		} else {
+			text = word
+		}
+
+		words, err := kagomer.ParseToNode(text)
 		if err != nil {
 			return fmt.Errorf("mecaber: %w", err)
 		}
@@ -96,4 +130,43 @@ func analyzeNodeToMap(node []string, tgtGrammar string) map[string]int {
 		}
 	}
 	return retMap
+}
+
+// convertToUTF8 は様々なエンコーディング（JIS、Shift_JIS、EUC-JP、UTF-8）からUTF-8に変換します
+func convertToUTF8(data []byte) (string, error) {
+	// まずUTF-8として試す
+	if isValidUTF8(data) {
+		return string(data), nil
+	}
+
+	// ISO-2022-JP (JIS) として試す
+	decoder := japanese.ISO2022JP.NewDecoder()
+	decoded, err := io.ReadAll(transform.NewReader(bytes.NewReader(data), decoder))
+	if err == nil && isValidUTF8(decoded) {
+		return string(decoded), nil
+	}
+
+	// Shift_JIS として試す
+	decoder = japanese.ShiftJIS.NewDecoder()
+	decoded, err = io.ReadAll(transform.NewReader(bytes.NewReader(data), decoder))
+	if err == nil && isValidUTF8(decoded) {
+		return string(decoded), nil
+	}
+
+	// EUC-JP として試す
+	decoder = japanese.EUCJP.NewDecoder()
+	decoded, err = io.ReadAll(transform.NewReader(bytes.NewReader(data), decoder))
+	if err == nil && isValidUTF8(decoded) {
+		return string(decoded), nil
+	}
+
+	// どのエンコーディングでも失敗した場合、元のデータをそのまま返す
+	return string(data), nil
+}
+
+// isValidUTF8 はバイト列が有効なUTF-8かどうかをチェックします
+func isValidUTF8(data []byte) bool {
+	// 文字列に変換して、元のバイト列と比較
+	s := string(data)
+	return len(s) > 0 && string([]byte(s)) == string(data)
 }
