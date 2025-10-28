@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image/color"
 	"image/png"
+	"math"
 	"os"
 
 	"github.com/psykhi/wordclouds"
@@ -36,20 +37,108 @@ var DefaultColors = []color.RGBA{
 	{0x70, 0xD6, 0xBF, 0xff},
 }
 
+// calculateDynamicParams は単語数に応じて動的にパラメータを計算する
+func calculateDynamicParams(wordCounts map[string]int) (width, height, fontMax, fontMin int) {
+	// 単語の種類数
+	uniqueWords := len(wordCounts)
+
+	// 総単語数（出現回数の合計）
+	totalWords := 0
+	maxFreq := 0
+	for _, count := range wordCounts {
+		totalWords += count
+		if count > maxFreq {
+			maxFreq = count
+		}
+	}
+
+	fmt.Printf("=== 動的パラメータ計算 ===\n")
+	fmt.Printf("ユニーク単語数: %d\n", uniqueWords)
+	fmt.Printf("総単語数: %d\n", totalWords)
+	fmt.Printf("最大出現回数: %d\n", maxFreq)
+
+	// 基本サイズの計算（単語数に応じてスケール）
+	// 単語数が少ない：小さいキャンバス
+	// 単語数が多い：大きいキャンバス
+	baseSize := 2048 // 基本サイズ
+
+	if uniqueWords <= 20 {
+		// 少ない単語数：小さめのキャンバス
+		width = 2048
+		height = 2048
+		fontMax = 300
+		fontMin = 40
+	} else if uniqueWords <= 50 {
+		// 中程度の単語数
+		width = 2560
+		height = 2560
+		fontMax = 280
+		fontMin = 35
+	} else if uniqueWords <= 100 {
+		// やや多い単語数
+		width = 3072
+		height = 3072
+		fontMax = 250
+		fontMin = 30
+	} else if uniqueWords <= 200 {
+		// 多い単語数
+		width = 3584
+		height = 3584
+		fontMax = 200
+		fontMin = 25
+	} else if uniqueWords <= 400 {
+		// 非常に多い単語数
+		width = 4096
+		height = 4096
+		fontMax = 160
+		fontMin = 20
+	} else {
+		// 極端に多い単語数：さらに大きく、フォントは小さく
+		// 対数スケールで増加
+		scale := math.Log10(float64(uniqueWords) / 200.0)
+		width = int(float64(baseSize) * (2.0 + scale*0.4))
+		height = width
+		fontMax = int(160.0 / (1.0 + scale*0.3))
+		fontMin = int(20.0 / (1.0 + scale*0.15))
+
+		// 上限を設定
+		if width > 8192 {
+			width = 8192
+			height = 8192
+		}
+		if fontMax < 80 {
+			fontMax = 80
+		}
+		if fontMin < 12 {
+			fontMin = 12
+		}
+	}
+
+	fmt.Printf("計算されたパラメータ:\n")
+	fmt.Printf("  キャンバス: %dx%d\n", width, height)
+	fmt.Printf("  フォントサイズ: %d - %d\n", fontMin, fontMax)
+	fmt.Printf("========================\n")
+
+	return width, height, fontMax, fontMin
+}
+
 func GenCloud(wordCounts map[string]int) {
 	if len(wordCounts) == 0 {
 		fmt.Println("ERROR: wordCounts is empty!")
 		return
 	}
 
+	// 動的にパラメータを計算
+	width, height, fontMax, fontMin := calculateDynamicParams(wordCounts)
+
 	conf := Conf{
-		FontMaxSize:     64 * 10,
-		FontMinSize:     64,
+		FontMaxSize:     fontMax,
+		FontMinSize:     fontMin,
 		RandomPlacement: false,
 		FontFile:        defaultFontPath,
 		Colors:          DefaultColors,
-		Width:           1024 * 3,
-		Height:          1024 * 3,
+		Width:           width,
+		Height:          height,
 		Mask: MaskConf{"", color.RGBA{
 			R: 0,
 			G: 0,
