@@ -17,8 +17,9 @@ import (
 )
 
 var (
-	word     string
-	filePath string
+	word       string
+	filePath   string
+	outputFile string
 )
 
 func main() {
@@ -35,6 +36,13 @@ func main() {
 			Aliases:     []string{"file"},
 			Usage:       "input text file path",
 			Destination: &filePath,
+		},
+		&cli.StringFlag{
+			Name:        "o",
+			Aliases:     []string{"output"},
+			Usage:       "output image file path (default: output.png)",
+			Destination: &outputFile,
+			Value:       "output.png",
 		},
 	}
 
@@ -81,7 +89,7 @@ func main() {
 		fmt.Fprintf(os.Stdout, "合計: %d種類の単語\n", len(wordMap))
 		fmt.Fprintf(os.Stdout, "================================\n")
 
-		cloudimg.GenCloud(wordMap)
+		cloudimg.GenCloud(wordMap, outputFile)
 
 		return nil
 	}
