@@ -233,7 +233,7 @@ func GenCloud(wordCounts map[string]int, outputPath string) {
 		fmt.Println("ERROR: wordCounts is empty!")
 		return
 	}
-	
+
 	// デフォルト値の設定
 	if outputPath == "" {
 		outputPath = "output.png"
