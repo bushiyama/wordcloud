@@ -228,10 +228,15 @@ func abs(x int) int {
 	return x
 }
 
-func GenCloud(wordCounts map[string]int) {
+func GenCloud(wordCounts map[string]int, outputPath string) {
 	if len(wordCounts) == 0 {
 		fmt.Println("ERROR: wordCounts is empty!")
 		return
+	}
+	
+	// デフォルト値の設定
+	if outputPath == "" {
+		outputPath = "output.png"
 	}
 
 	// 動的にパラメータを計算
@@ -276,15 +281,15 @@ func GenCloud(wordCounts map[string]int) {
 	// 余白をトリミング
 	trimmedImg := trimWhitespace(img)
 
-	outputFile, err := os.Create("output.png")
+	outputFile, err := os.Create(outputPath)
 	if err != nil {
 		panic(err)
 	}
 	defer outputFile.Close()
 
-	fmt.Println("Encoding image to output.png...")
+	fmt.Printf("Encoding image to %s...\n", outputPath)
 	if err := png.Encode(outputFile, trimmedImg); err != nil {
 		panic(err)
 	}
-	fmt.Println("✓ Successfully created output.png")
+	fmt.Printf("✓ Successfully created %s\n", outputPath)
 }
