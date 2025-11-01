@@ -2,7 +2,9 @@ package cloudimg
 
 import (
 	"fmt"
+	"image"
 	"image/color"
+	"image/draw"
 	"image/png"
 	"math"
 	"os"
@@ -122,6 +124,110 @@ func calculateDynamicParams(wordCounts map[string]int) (width, height, fontMax, 
 	return width, height, fontMax, fontMin
 }
 
+// trimWhitespace は画像の余白をトリミングする
+func trimWhitespace(img image.Image) image.Image {
+	bounds := img.Bounds()
+	minX, minY := bounds.Max.X, bounds.Max.Y
+	maxX, maxY := bounds.Min.X, bounds.Min.Y
+
+	// 背景色を取得（左上のピクセル）
+	bgColor := img.At(bounds.Min.X, bounds.Min.Y)
+	bgR, bgG, bgB, bgA := bgColor.RGBA()
+
+	fmt.Println("トリミング処理を開始...")
+
+	// コンテンツの境界を検出
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			r, g, b, a := img.At(x, y).RGBA()
+
+			// 背景色でないピクセルを検出
+			// 完全に同じ色でなくても、少し違えばコンテンツとみなす
+			if !colorsSimilar(r, g, b, a, bgR, bgG, bgB, bgA) {
+				if x < minX {
+					minX = x
+				}
+				if x > maxX {
+					maxX = x
+				}
+				if y < minY {
+					minY = y
+				}
+				if y > maxY {
+					maxY = y
+				}
+			}
+		}
+	}
+
+	// コンテンツが見つからなかった場合は元の画像を返す
+	if minX > maxX || minY > maxY {
+		fmt.Println("コンテンツが検出できませんでした。元の画像を使用します。")
+		return img
+	}
+
+	// パディング（余白）を追加（コンテンツの5%程度）
+	padding := int(float64(maxX-minX) * 0.05)
+	if padding < 20 {
+		padding = 20
+	}
+
+	minX -= padding
+	minY -= padding
+	maxX += padding
+	maxY += padding
+
+	// 境界チェック
+	if minX < bounds.Min.X {
+		minX = bounds.Min.X
+	}
+	if minY < bounds.Min.Y {
+		minY = bounds.Min.Y
+	}
+	if maxX > bounds.Max.X {
+		maxX = bounds.Max.X
+	}
+	if maxY > bounds.Max.Y {
+		maxY = bounds.Max.Y
+	}
+
+	// 新しい画像を作成
+	newBounds := image.Rect(0, 0, maxX-minX, maxY-minY)
+	newImg := image.NewRGBA(newBounds)
+
+	// 背景を白で塗りつぶす
+	draw.Draw(newImg, newBounds, &image.Uniform{color.White}, image.Point{}, draw.Src)
+
+	// トリミングした部分をコピー
+	draw.Draw(newImg, newBounds, img, image.Point{minX, minY}, draw.Src)
+
+	fmt.Printf("トリミング完了: %dx%d → %dx%d (%.1f%%削減)\n",
+		bounds.Dx(), bounds.Dy(),
+		newBounds.Dx(), newBounds.Dy(),
+		(1.0-float64(newBounds.Dx()*newBounds.Dy())/float64(bounds.Dx()*bounds.Dy()))*100)
+
+	return newImg
+}
+
+// colorsSimilar は2つの色が似ているかどうかを判定
+func colorsSimilar(r1, g1, b1, a1, r2, g2, b2, a2 uint32) bool {
+	// 閾値: 各チャンネルで1%の差まで許容
+	threshold := uint32(655) // 65535の1%
+
+	return abs(int(r1)-int(r2)) <= int(threshold) &&
+		abs(int(g1)-int(g2)) <= int(threshold) &&
+		abs(int(b1)-int(b2)) <= int(threshold) &&
+		abs(int(a1)-int(a2)) <= int(threshold)
+}
+
+// abs は整数の絶対値を返す
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
 func GenCloud(wordCounts map[string]int) {
 	if len(wordCounts) == 0 {
 		fmt.Println("ERROR: wordCounts is empty!")
@@ -165,7 +271,11 @@ func GenCloud(wordCounts map[string]int) {
 
 	fmt.Println("Drawing wordcloud...")
 	img := w.Draw()
-	fmt.Printf("Image bounds: %v\n", img.Bounds())
+	fmt.Printf("元の画像サイズ: %v\n", img.Bounds())
+
+	// 余白をトリミング
+	trimmedImg := trimWhitespace(img)
+
 	outputFile, err := os.Create("output.png")
 	if err != nil {
 		panic(err)
@@ -173,7 +283,7 @@ func GenCloud(wordCounts map[string]int) {
 	defer outputFile.Close()
 
 	fmt.Println("Encoding image to output.png...")
-	if err := png.Encode(outputFile, img); err != nil {
+	if err := png.Encode(outputFile, trimmedImg); err != nil {
 		panic(err)
 	}
 	fmt.Println("✓ Successfully created output.png")
