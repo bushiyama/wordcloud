@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"sort"
 	"strings"
 
 	cli "github.com/urfave/cli/v2"
@@ -77,14 +78,29 @@ func main() {
 		}
 
 		wordMap := analyzeNodeToMapAdvanced(words)
-		fmt.Fprintf(os.Stdout, "=== 抽出された単語（上位20件）===\n")
-		count := 0
-		for word, freq := range wordMap {
-			if count >= 20 {
-				break
-			}
-			fmt.Fprintf(os.Stdout, "%s: %d回\n", word, freq)
-			count++
+
+		// 頻度順にソート
+		type wordFreq struct {
+			word string
+			freq int
+		}
+		wordList := make([]wordFreq, 0, len(wordMap))
+		for w, f := range wordMap {
+			wordList = append(wordList, wordFreq{w, f})
+		}
+		sort.Slice(wordList, func(i, j int) bool {
+			return wordList[i].freq > wordList[j].freq
+		})
+
+		// 上位20件を表示
+		displayCount := 20
+		if len(wordList) < displayCount {
+			displayCount = len(wordList)
+		}
+
+		fmt.Fprintf(os.Stdout, "=== 抽出された単語（頻度順・上位%d件）===\n", displayCount)
+		for i := 0; i < displayCount; i++ {
+			fmt.Fprintf(os.Stdout, "%d. %s: %d回\n", i+1, wordList[i].word, wordList[i].freq)
 		}
 		fmt.Fprintf(os.Stdout, "合計: %d種類の単語\n", len(wordMap))
 		fmt.Fprintf(os.Stdout, "================================\n")
